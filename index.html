@@ -1,40 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="./stayley.css" />
-    <script src="./script.js" defer></script>
-    <title>Todo</title>
-  </head>
-  <body>
-    <section class="todo">
-      <h2>To-do list</h2>
-      <div class="input">
-        <input
-          type="text"
-          class="input-field"
-          id="todoInput"
-          placeholder="Add a new list"
-        />
-        <button class="btn">Add</button>
-      </div>
-      <ul class="scroll">
-        <li id="todoList"></li>
-      </ul>
-      <div>
-        <hr class="counter" />
-        <div class="counter-container">
-          <p><span id="todoCount">0</span> items total</p>
-          <button id="deleteButton">Delete All</button>
-        </div>
-      </div>
-    </section>
-    <footer>
-      <div class="footer">
-        <p class="made-by">Made By</p>
-        <p class="author">Arm K.</p>
-      </div>
-    </footer>
-  </body>
-</html>
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#176653"><meta name="description" content="A calm, practical task manager by Arm. Organize priorities, deadlines and everyday work."><title>Taskdesk — Make room for what matters</title><link rel="stylesheet" href="styles.css"><script src="core.js" defer></script><script src="script.js" defer></script></head>
+<body><a href="#main" class="skip">Skip to tasks</a><div class="app"><aside><a class="brand" href="./"><span class="logo">✓</span> Taskdesk<span class="edition">PERSONAL</span></a><p class="nav-label">WORKSPACE</p><nav aria-label="Task views"><button data-view="all" class="selected">All tasks <span id="all-count">0</span></button><button data-view="today">Today <span id="today-count">0</span></button><button data-view="upcoming">Upcoming <span id="upcoming-count">0</span></button><button data-view="completed">Completed <span id="completed-count">0</span></button></nav><div class="sidebar-note"><span class="note-icon">↳</span><h2>A little less noise.<br>A little more focus.</h2><p>One task at a time is still progress.</p></div><div class="data-tools"><button id="export">↓ Export backup</button><button id="import">↑ Import backup</button><input type="file" id="import-file" accept="application/json,.json" hidden></div><p class="credit">Made by Arm K.<br><span>Saved on this browser · No account needed</span></p></aside>
+<main id="main"><header><span id="date-label"></span><span class="local-badge">● Your personal workspace</span></header><section class="heading"><div><p class="eyebrow">A CLEARER DAY STARTS HERE</p><h1 id="view-title">All tasks</h1><p id="view-description">Capture the small things. Make space for the important ones.</p></div><button class="primary" id="new-task">＋ New task</button></section><section class="stats" aria-label="Task overview"><div><span>Open tasks</span><strong id="open-stat">0</strong><small>Ready for your next move</small></div><div><span>Due today</span><strong id="today-stat">0</strong><small>Keep these in sight</small></div><div><span>Completed</span><strong id="done-stat">0</strong><small id="progress-text">A fresh start</small></div></section><div id="storage-warning" role="alert" hidden></div>
+<section class="task-panel" aria-label="Your tasks"><form id="quick-form" class="quick-add"><span aria-hidden="true">＋</span><input id="quick-title" aria-label="New task title" maxlength="200" required placeholder="What needs to get done?"><button type="submit">Add task <span aria-hidden="true">↵</span></button></form><div class="toolbar"><label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" aria-label="Search tasks" placeholder="Search tasks…"></label><div class="controls"><select id="priority-filter" aria-label="Filter by priority"><option value="all">All priorities</option><option value="high">High priority</option><option value="medium">Medium priority</option><option value="low">Low priority</option></select><select id="sort" aria-label="Sort tasks"><option value="newest">Newest first</option><option value="due">Due date</option><option value="priority">Priority</option></select></div></div><div class="list-caption"><span id="result-count" aria-live="polite">0 tasks</span><span>YOUR NEXT STEPS</span></div><ul id="task-list"></ul><div id="empty" class="empty"><span class="empty-icon">✓</span><h2 id="empty-title">A clear desk. A fresh start.</h2><p id="empty-copy">Add your first task above, or use New task to plan the details.</p></div><footer class="panel-footer"><span id="remaining"></span><button id="clear-completed">Clear completed</button></footer></section><p class="bottom-note">Your list, your pace. <span>Keep moving forward.</span></p></main></div>
+<dialog id="editor"><form id="task-form"><div class="dialog-heading"><div><p class="eyebrow">MAKE A LITTLE PLAN</p><h2 id="editor-title">New task</h2></div><button type="button" class="icon-button" id="close-editor" aria-label="Close task editor">×</button></div><label>Task title<input id="task-title" required maxlength="200" placeholder="Give your task a clear name"></label><label>Notes<textarea id="task-notes" rows="4" maxlength="3000" placeholder="Details, ideas, or your next step…"></textarea></label><div class="form-grid"><label>Due date<input id="task-due" type="date" min="1900-01-01" max="9999-12-31"></label><label>Priority<select id="task-priority"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select></label></div><div class="dialog-actions"><button type="button" id="cancel-editor">Cancel</button><button class="primary" type="submit">Save task</button></div></form></dialog><div class="toast" id="toast" role="status" hidden><span id="toast-text"></span><button id="undo" hidden>Undo</button><button id="dismiss-toast" aria-label="Dismiss notification">×</button></div></body></html>

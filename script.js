@@ -1,87 +1,38 @@
-// Retrieve todo from local storage or initialize an empty array
-let todo = JSON.parse(localStorage.getItem("todo")) || [];
-const todoInput = document.getElementById("todoInput");
-const todoList = document.getElementById("todoList");
-const todoCount = document.getElementById("todoCount");
-const addButton = document.querySelector(".btn");
-const deleteButton = document.getElementById("deleteButton");
-
-// Initialize
-document.addEventListener("DOMContentLoaded", function () {
-  addButton.addEventListener("click", addTask);
-  todoInput.addEventListener("keydown", function (event) {
-    if (event.key === "Enter") {
-      event.preventDefault(); // Prevents default Enter key behavior
-      addTask();
-    }
-  });
-  deleteButton.addEventListener("click", deleteAllTasks);
-  displayTasks();
-});
-
-function addTask() {
-  const newTask = todoInput.value.trim();
-  if (newTask !== "") {
-    todo.push({ text: newTask, disabled: false });
-    saveToLocalStorage();
-    todoInput.value = "";
-    displayTasks();
-  }
+'use strict';
+const $=id=>document.getElementById(id), KEY='taskdesk.v1';
+let tasks=[],view='all',editing=null,undoState=null,toastTimer,loadError=false;
+const copy=()=>tasks.map(t=>({...t}));
+function warning(message){$('storage-warning').hidden=false;$('storage-warning').textContent=message;}
+try{const current=localStorage.getItem(KEY);if(current!==null){const data=JSON.parse(current);if(data.version!==1)throw Error();tasks=TaskCore.normalize(data.tasks);}else{const old=localStorage.getItem('todo');if(old!==null)tasks=TaskCore.normalize(JSON.parse(old),true);}}catch{loadError=true;warning('Saved data could not be read. Your existing data has not been overwritten. Import a valid backup to recover, or export the stored data before starting again.');}
+function persist(){try{localStorage.setItem(KEY,JSON.stringify({version:1,tasks}));$('storage-warning').hidden=true;return true;}catch{warning('This browser could not save your changes. Keep this page open and export a backup to avoid losing your tasks.');return false;}}
+function allowChange(){if(!loadError)return true;if(!confirm('The saved data could not be read. Starting again will replace it. Export the stored data first if you want to keep it. Continue?'))return false;loadError=false;return true;}
+function notify(message,undo=false){clearTimeout(toastTimer);$('toast-text').textContent=message;$('toast').hidden=false;$('undo').hidden=!undo;toastTimer=setTimeout(()=>{$('toast').hidden=true;undoState=null;},10000);}
+function commit(message,before){const saved=persist();render();undoState=before||null;notify(saved?message:message+' — not saved to browser',Boolean(before));}
+function createNode(tag,className,text){const n=document.createElement(tag);if(className)n.className=className;if(text!==undefined)n.textContent=text;return n;}
+const titles={all:['All tasks','Capture the small things. Make space for the important ones.'],today:['Today','A little focus for the day ahead.'],upcoming:['Upcoming','Give tomorrow a little breathing room.'],completed:['Completed','Take a moment to see how far you’ve come.']};
+function dateLabel(s){return new Date(s+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});}
+function render(){const today=TaskCore.today(),done=tasks.filter(t=>t.done).length,due=tasks.filter(t=>!t.done&&t.due===today).length;
+$('date-label').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+$('all-count').textContent=tasks.length;$('today-count').textContent=due;$('upcoming-count').textContent=tasks.filter(t=>!t.done&&t.due>today).length;$('completed-count').textContent=done;
+$('open-stat').textContent=tasks.length-done;$('today-stat').textContent=due;$('done-stat').textContent=done;$('progress-text').textContent=tasks.length?`${Math.round(done/tasks.length*100)}% of your tasks complete`:'A fresh start';
+$('view-title').textContent=titles[view][0];$('view-description').textContent=titles[view][1];document.querySelectorAll('[data-view]').forEach(b=>{b.classList.toggle('selected',b.dataset.view===view);b.setAttribute('aria-pressed',String(b.dataset.view===view));});
+const visible=TaskCore.select(tasks,{view,query:$('search').value,priority:$('priority-filter').value,sort:$('sort').value});$('task-list').replaceChildren();
+visible.forEach(t=>{const row=createNode('li','task'+(t.done?' done':''));const check=createNode('input');check.type='checkbox';check.checked=t.done;check.setAttribute('aria-label',`Mark ${t.title} ${t.done?'incomplete':'complete'}`);check.addEventListener('change',()=>{if(!allowChange()){render();return;}const before=copy();t.done=check.checked;commit(t.done?'Task completed. Nice work.':'Task reopened.',before);});const content=createNode('div','task-content');const title=createNode('button','task-title',t.title);title.addEventListener('click',()=>openEditor(t));content.append(title);if(t.notes)content.append(createNode('p','task-notes',t.notes));const meta=createNode('div','task-meta');meta.append(createNode('span','pill '+t.priority,t.priority[0].toUpperCase()+t.priority.slice(1)));if(t.due)meta.append(createNode('span',!t.done&&t.due<today?'overdue':'',(t.due===today?'Today':dateLabel(t.due))+(!t.done&&t.due<today?' · Overdue':'')));content.append(meta);const actions=createNode('div','row-actions');const edit=createNode('button','','Edit');edit.setAttribute('aria-label','Edit '+t.title);edit.onclick=()=>openEditor(t);const del=createNode('button','','Delete');del.setAttribute('aria-label','Delete '+t.title);del.onclick=()=>{if(!allowChange())return;const before=copy();tasks=tasks.filter(x=>x.id!==t.id);commit('Task deleted.',before);};actions.append(edit,del);row.append(check,content,actions);$('task-list').append(row);});
+$('result-count').textContent=`${visible.length} task${visible.length===1?'':'s'}`;$('remaining').textContent=`${tasks.length-done} open · ${done} completed`;$('clear-completed').disabled=done===0;$('empty').hidden=visible.length>0;const filtered=$('search').value.trim()||$('priority-filter').value!=='all';$('empty-title').textContent=filtered?'No matching tasks.':view==='completed'?'Your progress will live here.':view==='today'?'Nothing scheduled for today.':view==='upcoming'?'A little room ahead.':'A clear desk. A fresh start.';$('empty-copy').textContent=filtered?'Try another search or choose All priorities.':view==='all'?'Add your first task above, or use New task to plan the details.':'Choose All tasks to see your full list, or plan a new task.';
 }
+function makeTask(title,notes='',due='',priority='medium'){return {id:typeof crypto.randomUUID==='function'?crypto.randomUUID():`task-${Date.now()}-${Math.random().toString(36).slice(2)}`,title,notes,due,priority,done:false,createdAt:Date.now()};}
+function openEditor(task){editing=task?task.id:null;$('editor-title').textContent=task?'Edit task':'New task';$('task-title').value=task?.title||'';$('task-title').setCustomValidity('');$('task-notes').value=task?.notes||'';$('task-due').value=task?.due||(view==='today'?TaskCore.today():'');$('task-priority').value=task?.priority||'medium';$('editor').showModal();$('task-title').focus();}
+$('quick-form').onsubmit=e=>{e.preventDefault();const title=$('quick-title').value.trim();if(!title){$('quick-title').setCustomValidity('Please enter a task title.');$('quick-title').reportValidity();return;}if(!allowChange())return;const before=copy();tasks.push(makeTask(title,'',view==='today'?TaskCore.today():''));$('quick-title').value='';commit('Task added.'+(view==='completed'||view==='upcoming'?' Find it in All tasks.':''),before);};
+$('quick-title').oninput=()=> $('quick-title').setCustomValidity('');$('task-title').oninput=()=> $('task-title').setCustomValidity('');
+$('new-task').onclick=()=>openEditor();$('close-editor').onclick=$('cancel-editor').onclick=()=> $('editor').close();
+$('task-form').onsubmit=e=>{e.preventDefault();const title=$('task-title').value.trim(),due=$('task-due').value;if(!title){$('task-title').setCustomValidity('Please enter a task title.');$('task-title').reportValidity();return;}if(due&&!TaskCore.validDate(due))return;if(!allowChange())return;const before=copy(),data={title,notes:$('task-notes').value.trim(),due,priority:$('task-priority').value};if(editing){const t=tasks.find(t=>t.id===editing);if(t)Object.assign(t,data);}else tasks.push(makeTask(data.title,data.notes,data.due,data.priority));$('editor').close();commit(editing?'Task updated.':'Task added.',before);};
+document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{view=b.dataset.view;$('search').value='';$('priority-filter').value='all';render();});$('search').oninput=render;$('priority-filter').onchange=render;$('sort').onchange=render;
+$('clear-completed').onclick=()=>{const n=tasks.filter(t=>t.done).length;if(!n||!confirm(`Clear ${n} completed task${n===1?'':'s'}? You can undo this immediately afterwards.`)||!allowChange())return;const before=copy();tasks=tasks.filter(t=>!t.done);commit('Completed tasks cleared.',before);};
+$('undo').onclick=()=>{if(undoState){tasks=undoState;undoState=null;commit('Change undone.');}};$('dismiss-toast').onclick=()=>{$('toast').hidden=true;undoState=null;};
+$('export').onclick=()=>{let data=JSON.stringify({version:1,exportedAt:new Date().toISOString(),tasks},null,2);if(loadError){try{data=localStorage.getItem(KEY)||localStorage.getItem('todo')||data;}catch{notify('Browser storage is unavailable.');return;}}const url=URL.createObjectURL(new Blob([data],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download=`taskdesk-${TaskCore.today()}.json`;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);notify('Backup download requested.');};
+$('import').onclick=()=> $('import-file').click();$('import-file').onchange=async()=>{const f=$('import-file').files[0];if(!f)return;try{if(f.size>10000000)throw Error();const data=JSON.parse(await f.text());if(data.version!==1)throw Error();const imported=TaskCore.normalize(data.tasks);if(!confirm(`Replace your current list with ${imported.length} tasks from this backup?`))return;const before=copy();tasks=imported;loadError=false;commit('Backup imported.',before);}catch{notify('Could not import this file. Choose a valid Taskdesk JSON backup.');}finally{$('import-file').value='';}};
+// Refresh date-based views when returning to the tab or crossing midnight.
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)render();});setInterval(()=>{if(!document.hidden)render();},60000);
+window.addEventListener('storage',e=>{if(e.key===KEY)warning('Your tasks changed in another tab. Export any unsaved work, then reload this page before making more changes.');});
+render();
 
-function displayTasks() {
-  todoList.innerHTML = "";
-  todo.forEach((item, index) => {
-    const p = document.createElement("p");
-    p.innerHTML = `
-      <div class="todo-container">
-        <input type="checkbox" class="todo-checkbox" id="input-${index}" ${
-      item.disabled ? "checked" : ""
-    }>
-        <p id="todo-${index}" class="${
-      item.disabled ? "disabled" : ""
-    }" onclick="editTask(${index})">${item.text}</p>
-      </div>
-    `;
-    p.querySelector(".todo-checkbox").addEventListener("change", () =>
-      toggleTask(index)
-    );
-    todoList.appendChild(p);
-  });
-  todoCount.textContent = todo.length;
-}
-
-function editTask(index) {
-  const todoItem = document.getElementById(`todo-${index}`);
-  const existingText = todo[index].text;
-  const inputElement = document.createElement("input");
-
-  inputElement.value = existingText;
-  todoItem.replaceWith(inputElement);
-  inputElement.focus();
-
-  inputElement.addEventListener("blur", function () {
-    const updatedText = inputElement.value.trim();
-    if (updatedText) {
-      todo[index].text = updatedText;
-      saveToLocalStorage();
-    }
-    displayTasks();
-  });
-}
-
-function toggleTask(index) {
-  todo[index].disabled = !todo[index].disabled;
-  saveToLocalStorage();
-  displayTasks();
-}
-
-function deleteAllTasks() {
-  todo = [];
-  saveToLocalStorage();
-  displayTasks();
-}
-
-function saveToLocalStorage() {
-  localStorage.setItem("todo", JSON.stringify(todo));
-}
